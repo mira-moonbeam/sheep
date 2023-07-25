@@ -5,9 +5,47 @@ import re
 
 filepath = sys.argv[1]
 
+# TODO: SHEBANG LINE
+# TODO: when using a module, add to a list of import statements we need to use like glob
+# TODO: IN GLOB HANDLER: get the dang quotes working like "thing" + globglob
+# TODO: File structure
+# sheepy.py (command_handler and fileread. Import all the functions in command handler)
+# subset_0.py (handlers and helpers for subset 0)
+# subset_1.py (take a guess)
+
 # * HANDLER HELPERS
 def remove_unescaped_quotes(s):
     return re.sub(r'(?<!\\)(\'|")', '', s)
+
+def behold_the_glob(line):
+    # look for word containing *, ?, [, and ]
+
+    # replace it with + "".globglob("theSTRING") +
+    # Unless it's the start of the line, then just "".globglob("theSTRING") + 
+    # OR END, then + "".globglob("theSTRING")
+    # if it's alone :( then just "".globglob("theSTRING") will do
+    # The regex pattern finds words that contain one of the special characters *, ?, [, ]
+    pattern = r'(?:^|\s)(\S*[\*\?\[\]]+\S*)(?:\s|$)'
+
+    # Look for matches in the line
+    matches = re.findall(pattern, line)
+
+    # For each match, replace it appropriately
+    for match in matches:
+        # Check if match is at the start, end, or alone in the line
+        if line.startswith(match) and line.endswith(match):
+            replacement = f'"".join(sorted(glob.glob("{match}")))'
+        elif line.startswith(match):
+            replacement = f'"".join(sorted(glob.glob("{match}"))) + "'
+        elif line.endswith(match):
+            replacement = f'" + "".join(sorted(glob.glob("{match}")))'
+        else:
+            replacement = f'" + "".join(sorted(glob.glob("{match}"))) + "'
+
+        # Replace the match in the line
+        line = line.replace(match, replacement)
+        
+    return line
 
 def check_var_sub(line):
     # enclosed by "" translate, otherwise enclosed by '' keep literal
@@ -20,11 +58,9 @@ def check_var_sub(line):
                 # Replace the original substring with the modified one.
                 line = line.replace("'" + match + "'", "'" + replaced + "'")
 
-        line = remove_unescaped_quotes(line)
-        return 'f"' + line + '"'
+        return 'f' + line 
     else:
-        line = remove_unescaped_quotes(line)
-        return '"' + line + '"'
+        return line 
 
 def inline_comments(line):
     # Idead is to grab the comments (anything past a # that isnt escape charactered)
@@ -57,6 +93,9 @@ def echo_line(line):
         str_to_print = str_to_print.strip()
 
     str_to_print = check_var_sub(str_to_print)
+    str_to_print = remove_unescaped_quotes(str_to_print)
+    str_to_print = behold_the_glob(str_to_print)
+
     if comment:
         return f'print({str_to_print}) #{comment}'
     
@@ -69,6 +108,10 @@ def var_assign(line):
         value = value[1:-1]
     
     value = check_var_sub(value)
+
+    value = remove_unescaped_quotes(value)
+    value = behold_the_glob(value)
+
     if comment:
         return f'{var} = {value} #{comment}'
     
@@ -78,8 +121,11 @@ command_handler = {
     # Match enclosed quotes \'[^\']*\' | \"[^\"]*\"
     # Match any string of allowed characters without quotes or variable subs \$\w+ | \w+
     # Match zero or more whitespace to allow space (patterns)\s*
-    r'^echo ((\'[^\']*\'|\"[^\"]*\"|\$\w+|\w+|#)\s*)+$': echo_line,
-    r'^[\w]+=((\'[^\']*\'|\"[^\"]*\"|\$\w+|\w+|#)\s*)+$': var_assign
+    #r'^echo ((\'[^\']*\'|\"[^\"]*\"|\$\w+|\w+|#)\s*)+$': echo_line,
+    #r'^[\w]+=((\'[^\']*\'|\"[^\"]*\"|\$\w+|\w+|#)\s*)+$': var_assign
+
+    r'^echo .+$': echo_line,
+    r'^[\w]+=.+': var_assign
 }
 with open(filepath, 'r') as file:
     lines = file.readlines()
