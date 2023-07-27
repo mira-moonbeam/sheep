@@ -43,7 +43,7 @@ def var_sub(variables, line):
     return {'line': line, 'end': no_end_quote, 'start': no_start_quote}
 
 # echo
-def echo_line(variables, line):
+def echo_line(variables, line, *args, **kwargs):
     line = line.replace('echo ', '', 1)
     no_end_quote = False
     no_start_quote = False
@@ -98,7 +98,7 @@ def echo_line(variables, line):
     return f'print({start_quote}{str_to_print}{end_quote})'
 
 # =
-def var_assign(variables, line):
+def var_assign(variables, line, *args, **kwargs):
     
     var, value = re.split('=', line)
 
@@ -144,9 +144,9 @@ def behold_the_glob(line):
 
     return result
 
-def for_loop(variables, start_line):
+def for_loop(variables, start_line, depth, *args, **kwargs):
     loop_variables = variables.copy()
-    
+    indent_level = '\t' * depth
     pattern = r'for\s+(\w+)\s+in\s+(.*)'
 
     match = re.match(pattern, start_line)
@@ -157,20 +157,21 @@ def for_loop(variables, start_line):
     else:
         return "Unrecognized command"
 
-    print(f'for {variable_name} in {values} but pythoned')
+    print(indent_level + f'for {variable_name} in {values} but pythoned')
 
     for line in file:
         line = line.strip()
         if line == "done":
-            return "done"
+            return ""
         
         for pattern, handler in command_handler.items():
             if re.match(pattern, line):
-                print_line = handler(loop_variables, line) + comment
-                print(print_line)
+                print_line = handler(loop_variables, line, depth + 1) + comment
+                print(indent_level +'\t' + print_line)
                 break
         else:
-            print(line)
+            if line != "do":
+                print(indent_level +'\t' + line)
 
     return
 
@@ -199,7 +200,7 @@ with open(filepath, 'r') as file:
 
         for pattern, handler in command_handler.items():
             if re.match(pattern, line):
-                print_line = handler(variables, line) + comment
+                print_line = handler(variables, line, depth=0) + comment
                 print(print_line)
                 break
         else:
