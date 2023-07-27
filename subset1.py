@@ -1,5 +1,7 @@
 #! /usr/bin/env python3
 import re
+# TODO: when using a module, add to a list of import statements we need to use like glob
+# TODO: IN GLOB HANDLER: get the dang quotes working like "thing" + globglob
 
 def behold_the_glob(line):
     # look for word containing *, ?, [, and ]
