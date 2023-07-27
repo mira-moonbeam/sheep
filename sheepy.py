@@ -157,6 +157,7 @@ def for_loop(variables, start_line, depth, *args, **kwargs):
     else:
         return "Unrecognized command"
 
+    # TODO: Behold the glob and if it retuns nothing we can assume it's just an array thing
     print(indent_level + f'for {variable_name} in {values} but pythoned')
 
     for line in file:
