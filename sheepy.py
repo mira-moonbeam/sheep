@@ -1,7 +1,7 @@
 #! /usr/bin/env python3
 import sys
 import re
-from subset0 import echo_line, var_assign, inline_comments, var_sub
+from subset0 import echo_line, var_assign, inline_comments
 
 #* File structure
 # sheepy.py (command_handler and fileread. Import all the functions in command handler)
