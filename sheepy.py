@@ -37,7 +37,7 @@ def echo_line(variables, line):
             str_to_print += word + " "
         str_to_print = str_to_print.strip()
 
-    str_to_print = remove_start_end_quotes(str_to_print)    
+   
 
     # VARIABLE SUBSTITUTION
     str_to_print = var_sub(variables, str_to_print)
@@ -72,7 +72,7 @@ def echo_line(variables, line):
     
     end_quote = "" if no_end_quote else "\""
     start_quote = "" if no_start_quote else "\""
-
+    str_to_print = remove_start_end_quotes(str_to_print) 
     return f'print({start_quote}{str_to_print}{end_quote})'
 
 # =
@@ -113,7 +113,8 @@ def behold_the_glob(line):
     pattern = r'(?:^|\s)(\S*[\*\?\[\]]+\S*)(?:\s|$)'
 
     # Look for matches in the line
-    matches = re.findall(pattern, line)
+    no_single_quotes = re.sub(r"'[^']*'", "", line)  # remove all parts within single quotes
+    matches = re.findall(pattern, no_single_quotes)
 
     # For each match, replace it appropriately
     for match in matches:
