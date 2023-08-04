@@ -67,7 +67,18 @@ def echo_line(variables, line, *args, **kwargs):
     no_start_quote = False
     str_to_print = ""
     if line.startswith(("'")) and line.endswith(("'")):       
-        str_to_print = line
+        wordarr = re.split('', line)
+        for word in wordarr:
+            if word == '"':
+                word = '\\"'
+            str_to_print += word
+        str_to_print = str_to_print.strip()
+    
+    elif line.startswith('"') and line.endswith('"'):
+        wordarr = re.split('', line)
+        for word in wordarr:
+            str_to_print += word
+        str_to_print = str_to_print.strip()
 
     else:
         wordarr = re.split('\s+', line)
@@ -116,17 +127,25 @@ def echo_line(variables, line, *args, **kwargs):
 
 # =
 def var_assign(variables, line, *args, **kwargs):
-    var, value = re.split('=', line)
+    var, value = re.split('=', line, 1)
 
     # Just add it to the dict lol. I know now writing comments after finishing
     # That i couldve just did it directly but too late
     if variables:
         results = var_sub(variables, value)
         value = results['line']
+    
+    value = value.strip()
     value = remove_start_end_quotes(value)
-
     variables[var] = value
-
+    
+    wordarr = re.split('', value)
+    value = ""
+    for word in wordarr:
+        if word == '"':
+            word = '\\"'
+        value += word
+    
     return f'{var} = "{value}"'
 
 # #
@@ -178,20 +197,35 @@ def for_loop(variables, start_line, depth, *args, **kwargs):
         loop_variables[variable_name] = "loopvar:"+variable_name
     else:
         return "Unrecognized command"
-
-    loop_values = behold_the_glob(values)
-    if not loop_values:
-        # We know it's not a glob so we have to turn it into an array
-        values = re.split(' ', values)
-        loop_values = "["
-        for value in values:
-            loop_values += f'"{value}",'
-        loop_values = loop_values[:-1] + "]"
+    
+    loop_values = ""
+    values_subbed = var_sub(loop_variables, values)['line']
+    if values_subbed == values:
+        loop_values = behold_the_glob(values)
+        if not loop_values:
+            # We know it's not a glob so we have to turn it into an array
+            values = re.split(' ', values)
+            loop_values = "["
+            for value in values:
+                loop_values += f'"{value}",'
+            loop_values = loop_values[:-1] + "]"
+        else:
+            # It's just a glob but we need to get format the glob return
+            loop_values = list(loop_values.values())[0]
+            loop_values = re.split('\(', loop_values, 1)
+            loop_values = loop_values[1][:-1]
     else:
-        # It's just a glob but we need to get format the glob return
-        loop_values = list(loop_values.values())[0]
-        loop_values = re.split('\(', loop_values, 1)
-        loop_values = loop_values[1][:-1]
+        potential_glob = list(behold_the_glob(values_subbed).values())
+        if potential_glob:
+            loop_values = list(behold_the_glob(values_subbed).values())[0]
+            loop_values = re.split('\(', loop_values, 1)
+            loop_values = loop_values[1][:-1]
+        else:
+            values = re.split(' ', values_subbed)
+            loop_values = "["
+            for value in values:
+                loop_values += f'"{value}",'
+            loop_values = loop_values[:-1] + "]"
     
     temp.write(indent_level + f'for {variable_name} in {loop_values}:' + comment + '\n')
 
@@ -239,10 +273,11 @@ def read_handle(variables, line, *args, **kwargs):
     # Lowkey I am pogging rihgt now because loopvar wrokaround works here too LOL
     # Now im thinking if i could implement this to glob but honestly it's late and i have other projects
     variables[line[1]] = "loopvar:"+line[1]
-    
+
     return(f'{line[1]} = input()')
 
 def external_command(variables, line):
+    imports.add("subprocess")
     words = re.split(' ', line)
     commands = []
 

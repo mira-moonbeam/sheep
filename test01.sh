@@ -1,12 +1,13 @@
 #!/bin/dash
 
-# ECHO TEST
+# VARIABLE SUBSTITUTION and COMMENT tests
 
-# Simple Echos
-echo hello world # inline
+w=1                             # simple assign
+x=COMP204$w                     # cooler simple substitute
+y="doublequote 'sub', x = $w"     # In quotes
+z='singlequotes "sub" x = $w'
+nested_double="nest x = $x"         # nested
+nested_raw=single$nested_double     # and again
 
-echo long            long                            space
-
-# With quotes
-echo '.*()$@$   &'
-echo "okay now with *()    and a long space using double quotes"
+# This one is my white whale
+echo $z

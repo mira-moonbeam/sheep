@@ -1,15 +1,32 @@
 #!/bin/dash
 
-# VARIABLE ASSIGNMENT AND VARIABLE ACCESS TEST
+# GLOBBING and FOR-LOOP tests
 
-# Simple Assign
+echo *
+
+C_files=*.[ch]
+echo $C_files
+
+echo middle ?.py glob
+echo ?.py start glob
+echo end glob ?.py
+
+echo multi ?.py ?.py * glob
+
 x=1
-y='lots of $x cash'
+y=2
 
-# Substitution
-z=COMP2041$x
+for word in this is a string
+do
+    echo "$word combined with other words"
 
-# Nested Substitution
-w="but$y"
-
-echo $x $y $z $w
+    for i in $x $y
+    do
+        echo $i
+    done
+    
+    for file in $C_files
+    do
+        echo $file
+    done
+done
