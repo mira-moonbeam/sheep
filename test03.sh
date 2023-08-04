@@ -1,20 +1,16 @@
 #!/bin/dash
 
+# EXIT and CHANGEDIR tests (From SPEC)
+
+echo *
+cd /tmp
+echo *
+cd ..
 echo *
 
-C_files=*.[ch]
-echo $C_files
-
-echo middle ?.py glob
-echo ?.py start glob
-echo end glob ?.py
-
-echo multi ?.py ?.py * glob
-
-#!/bin/dash
-
-echo "hello    world"
-
-echo "This is sill a $variable"
-
-echo "This is not a glob *.sh"
+echo hello world
+exit
+echo this will not be printed
+exit 0
+echo this will double not be printed
+exit 3

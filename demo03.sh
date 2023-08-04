@@ -1,5 +1,6 @@
 #!/bin/dash
 
+# This one, I'm reusing because I'm tired
 
 var=testdir
 mkdir $var
@@ -11,4 +12,4 @@ do                                                # keyword
     echo $course                                  # builtin
     mkdir $course                                 # external command
     chmod 700 $course                             # external command
-done          
+done     

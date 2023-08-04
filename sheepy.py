@@ -270,11 +270,12 @@ def cd_handle(variables, line, *args, **kwargs):
 
 def read_handle(variables, line, *args, **kwargs):
     line = re.split(' ', line, 1)
+    varName = line[1].strip()
     # Lowkey I am pogging rihgt now because loopvar wrokaround works here too LOL
     # Now im thinking if i could implement this to glob but honestly it's late and i have other projects
-    variables[line[1]] = "loopvar:"+line[1]
+    variables[varName] = "loopvar:"+varName
 
-    return(f'{line[1]} = input()')
+    return(f'{varName} = input()')
 
 def external_command(variables, line):
     imports.add("subprocess")
@@ -282,8 +283,10 @@ def external_command(variables, line):
     commands = []
 
     for word in words:
+        word = remove_start_end_quotes(word)
         word = '"' + word + '"'
         word = var_sub(variables, word)['line']
+
         word = re.split(" ", word)
 
         if len(word) > 1:
