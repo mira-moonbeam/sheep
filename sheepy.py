@@ -121,7 +121,7 @@ def inline_comments(line):
 
     if match:
         content = match.group(1)
-        comment = "# " + match.group(2)
+        comment = " #" + match.group(2)
         return content, comment
     else:
         return line, ""
@@ -150,6 +150,7 @@ def behold_the_glob(line):
 
 def for_loop(variables, start_line, depth, *args, **kwargs):
     loop_variables = variables.copy()
+    start_line, comment = inline_comments(start_line)
     indent_level = '\t' * depth
     pattern = r'for\s+(\w+)\s+in\s+(.*)'
 
@@ -173,22 +174,29 @@ def for_loop(variables, start_line, depth, *args, **kwargs):
         loop_values = re.split('\(', loop_values, 1)
         loop_values = loop_values[1][:-1]
     
-    temp.write(indent_level + f'for {variable_name} in {loop_values}:' + '\n')
+    temp.write(indent_level + f'for {variable_name} in {loop_values}:' + comment + '\n')
 
     for line in file:
+        line, comment = inline_comments(line)
         line = line.strip()
         if line == "done":
             return ""
 
         for pattern, handler in command_handler.items():
             if re.match(pattern, line):
-                print_line = handler(loop_variables, line, depth + 1) + comment
-                temp.write(indent_level +'\t' + print_line + '\n')
+                print_line = handler(loop_variables, line, depth + 1)
+                temp.write(indent_level +'\t' + print_line + comment + '\n')
                 break
         else:
-            if line != "do":
-                temp.write(indent_level +'\t' + line + '\n')
-
+            if line == "":
+                temp.write('\n')
+            elif line != 'do':
+                is_comment = bool(re.match(r'^#', line))
+                if is_comment:
+                    temp.write(indent_level +'\t'  + line + '\n')
+                else:
+                    print_line = external_command(loop_variables, line)
+                    temp.write(indent_level +'\t' + print_line + comment + '\n')
     return
 
 def exit_handle(variables, line, *args, **kwargs):
@@ -211,6 +219,31 @@ def read_handle(variables, line, *args, **kwargs):
     # Now im thinking if i could implement this to glob but honestly it's late and i have other projects
     variables[line[1]] = "loopvar:"+line[1]
     return(f'input = ("{line[1]}")')
+
+def external_command(variables, line):
+    words = re.split(' ', line)
+    commands = []
+    
+    for word in words:
+        word = '"' + word + '"'
+        word = var_sub(variables, word)['line']
+        word = re.split(" ", word)
+
+        if len(word) > 1:
+            # I can do this because passing a single thing to var_sub will always result in consistent returns
+            word = word[2]
+        else:
+            word = word[0]
+
+        commands.append(word)
+
+    line = "subprocess.run("
+    for command in commands:
+        line += command + ","
+    line = line[:-1] + ")"
+
+    return (line)
+
     
 # *COMMAND HANDLER
 filepath = sys.argv[1]
@@ -238,16 +271,28 @@ variables = {}
 with open(filepath, 'r') as file:
     for line in file:
         line = line.strip()
-        line, comment = inline_comments(line)
+        line_no_comm, comment = inline_comments(line)
 
         for pattern, handler in command_handler.items():
             if re.match(pattern, line):
-                print_line = handler(variables, line, depth=0) + comment
-                temp.write(print_line + '\n')  # Write to temporary file instead of printing
+                if handler == for_loop:
+                    print_line = handler(variables, line, depth=0)
+                else:
+                    print_line = handler(variables, line_no_comm, depth=0) + comment
+
+                if (print_line != ""):
+                    temp.write(print_line + '\n')  # Write to temporary file instead of printing
                 break
         else:
-            if line != '#!/bin/dash':
-                temp.write(line + '\n')
+            if line == "":
+                temp.write('\n')
+            elif line != '#!/bin/dash':
+                is_comment = bool(re.match(r'^#', line))
+                if is_comment:
+                    temp.write(line + '\n')
+                else:
+                    print_line = external_command(variables, line_no_comm)
+                    temp.write(print_line + comment + '\n')
 
 # Close the temporary file
 temp.close()

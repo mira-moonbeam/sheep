@@ -13,7 +13,7 @@ do
         echo $i yes this is text
     done
 done
-
+# and just a comment
 for file in *.c
 do
     echo $file

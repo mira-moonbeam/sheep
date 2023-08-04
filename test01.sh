@@ -3,7 +3,7 @@
 # ECHO TEST
 
 # Simple Echos
-echo hello world
+echo hello world # inline
 
 echo long            long                            space
 
