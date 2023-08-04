@@ -1,4 +1,6 @@
 #! /usr/bin/env python3
+import tempfile
+import os
 import sys
 import re
 
@@ -124,11 +126,10 @@ def inline_comments(line):
     else:
         return line, ""
     
-# SUBSET 1
+# SUBSET 1, where i realized variables and stuff can just be called without calling but it's too late
 # globbing
 def behold_the_glob(line):
     # look for word containing *, ?, [, and ]
-
     # return word: replacement
     # go replace it and deal with it in the adult function
     result=  {}
@@ -137,6 +138,9 @@ def behold_the_glob(line):
     # Look for matches in the line
     no_single_quotes = re.sub(r"'[^']*'", "", line)  # remove all parts within single quotes
     matches = re.findall(pattern, no_single_quotes)
+
+    if len(matches) > 0:
+        imports.add("glob")
 
     # For each match, replace it appropriately
     for match in matches:
@@ -157,25 +161,45 @@ def for_loop(variables, start_line, depth, *args, **kwargs):
     else:
         return "Unrecognized command"
 
-    # TODO: Behold the glob and if it retuns nothing we can assume it's just an array thing
-    print(indent_level + f'for {variable_name} in {values} but pythoned')
+    loop_values = behold_the_glob(values)
+    if not loop_values:
+        values = re.split(' ', values)
+        loop_values = "["
+        for value in values:
+            loop_values += f'"{value}",'
+        loop_values = loop_values[:-1] + "]"
+    else:
+        loop_values = list(loop_values.values())[0]
+        loop_values = re.split('\(', loop_values, 1)
+        loop_values = loop_values[1][:-1]
+    
+    temp.write(indent_level + f'for {variable_name} in {loop_values}:' + '\n')
 
     for line in file:
         line = line.strip()
         if line == "done":
             return ""
-        
+
         for pattern, handler in command_handler.items():
             if re.match(pattern, line):
                 print_line = handler(loop_variables, line, depth + 1) + comment
-                print(indent_level +'\t' + print_line)
+                temp.write(indent_level +'\t' + print_line + '\n')
                 break
         else:
             if line != "do":
-                print(indent_level +'\t' + line)
+                temp.write(indent_level +'\t' + line + '\n')
 
     return
 
+def exit_handle(variables, line, *args, **kwargs):
+    imports.add("sys")
+    line = re.split(' ', line)
+
+    if len(line) == 1:
+        return "sys.exit()"
+    else:
+        return f'sys.exit({line[1]})'
+    
 # *COMMAND HANDLER
 filepath = sys.argv[1]
 command_handler = {
@@ -188,11 +212,14 @@ command_handler = {
     r'^echo .+$': echo_line,
     r'^[\w]+=.+': var_assign,
     r'^for \w+ in .*': for_loop,
+    r'^exit\s*[0-9]*$': exit_handle,
 }
 
 # *MAIN LOOP
-imports = []
+temp = tempfile.NamedTemporaryFile(mode='w+t', delete=False)
+imports = set()
 variables = {}
+
 
 with open(filepath, 'r') as file:
     for line in file:
@@ -202,9 +229,25 @@ with open(filepath, 'r') as file:
         for pattern, handler in command_handler.items():
             if re.match(pattern, line):
                 print_line = handler(variables, line, depth=0) + comment
-                print(print_line)
+                temp.write(print_line + '\n')  # Write to temporary file instead of printing
                 break
         else:
-            if line == '#!/bin/dash':
-                line = '#!/usr/bin/python3 -u'
-            print(line)
+            if line != '#!/bin/dash':
+                temp.write(line + '\n')
+
+# Close the temporary file
+temp.close()
+
+# Now print the imports
+print('#!/usr/bin/python3 -u')
+print()
+for imp in imports:
+    print(f'import {imp}')
+
+# Now read from the temporary file and print its content
+with open(temp.name, 'r') as file:
+    for line in file:
+        print(line, end='')
+
+# Remove the temporary file
+os.remove(temp.name)

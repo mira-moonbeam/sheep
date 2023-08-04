@@ -10,7 +10,7 @@ do
     echo $word
     for i in 1 2 3
     do
-        echo $i
+        echo $i yes this is text
     done
 done
 
