@@ -200,6 +200,18 @@ def exit_handle(variables, line, *args, **kwargs):
     else:
         return f'sys.exit({line[1]})'
     
+def cd_handle(variables, line, *args, **kwargs):
+    imports.add("os")
+    line = re.split(' ', line, 1)
+    return(f'os.chdir("{line[1]}")')
+
+def read_handle(variables, line, *args, **kwargs):
+    line = re.split(' ', line, 1)
+    # Lowkey I am pogging rihgt now because loopvar wrokaround works here too LOL
+    # Now im thinking if i could implement this to glob but honestly it's late and i have other projects
+    variables[line[1]] = "loopvar:"+line[1]
+    return(f'input = ("{line[1]}")')
+    
 # *COMMAND HANDLER
 filepath = sys.argv[1]
 command_handler = {
@@ -213,6 +225,8 @@ command_handler = {
     r'^[\w]+=.+': var_assign,
     r'^for \w+ in .*': for_loop,
     r'^exit\s*[0-9]*$': exit_handle,
+    r'^cd .*$': cd_handle,
+    r'^read .*$': read_handle,
 }
 
 # *MAIN LOOP
