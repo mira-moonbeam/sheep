@@ -4,6 +4,15 @@ import os
 import sys
 import re
 
+# Code by me, Loewito, but the tasting notes:
+# Subset 0 and Subset 1 is complete, and I've accdientally done the following in future subsets 
+# Just due to being a little bit extra
+
+# Subset 2: Single Quotes, Double Quotes, For-loop Nesting
+
+# and that's it, im not THAT extra i have a life
+
+
 # * HANDLER HELPERS
 def remove_start_end_quotes(s):
     if (s.startswith("'") and s.endswith("'")) or (s.startswith('"') and s.endswith('"')):
@@ -22,25 +31,32 @@ def var_sub(variables, line):
 
     for match in matches:       
         varName = match[1:]
-        if bool(re.match('^loopvar:.+$', variables[varName])):
-            if line == ("$" + varName):
-                # ONLY
-                line = line.replace(match, varName)
-                no_end_quote = True
-                no_start_quote = True
-            elif line.startswith(("$" + varName)):
-                # STARTS
-                line = line.replace(match, varName + " + \"")
-                no_start_quote = True
-            elif line.endswith(("$" + varName)):
-                # ENDS
-                line = line.replace(match, "\" + " + varName)
-                no_end_quote = True
+        # Dealing with quotes similar to behold the glob, since in these cases it means
+        # the variables have no value (loop variable, read, etc.) and need to slot in lines
+        if varName in variables:
+            if bool(re.match('^loopvar:.+$', variables[varName])):
+                if line == ("$" + varName):
+                    # ONLY
+                    line = line.replace(match, varName)
+                    no_end_quote = True
+                    no_start_quote = True
+                elif line.startswith(("$" + varName)):
+                    # STARTS
+                    line = line.replace(match, varName + " + \"")
+                    no_start_quote = True
+                elif line.endswith(("$" + varName)):
+                    # ENDS
+                    line = line.replace(match, "\" + " + varName)
+                    no_end_quote = True
+                else:
+                    #MIDDLE
+                    line = line.replace(match, "\" + " + varName + " + \"")
             else:
-                #MIDDLE
-                line = line.replace(match, "\" + " + varName + " + \"")
+                # Easyyy just change it into the value
+                line = line.replace(match, variables[varName])
         else:
-            line = line.replace(match, variables[varName])
+            # if varName is not in variables, replace "$" + varName with an empty string
+            line = line.replace(match, "")
 
     return {'line': line, 'end': no_end_quote, 'start': no_start_quote}
 
@@ -60,15 +76,12 @@ def echo_line(variables, line, *args, **kwargs):
         str_to_print = str_to_print.strip()
 
     # VARIABLE SUBSTITUTION
-
     results = var_sub(variables, str_to_print)
     str_to_print = results['line']
     no_end_quote = results['end']
     no_start_quote = results['start']
 
     # GLOBBING
-
-
     globs = behold_the_glob(str_to_print)
     # given gjealk glob DLKfkj
     # replace glob at start with glob + "rest of string"
@@ -94,22 +107,26 @@ def echo_line(variables, line, *args, **kwargs):
             #MIDDLE
             str_to_print = str_to_print.replace(key, "\" + " + replacement + " + \"")
     
+    # With the info we get regarding quotes, we print it in the ight places
     end_quote = "" if no_end_quote else "\""
     start_quote = "" if no_start_quote else "\""
-    str_to_print = remove_start_end_quotes(str_to_print) 
+    str_to_print = remove_start_end_quotes(str_to_print)
+
     return f'print({start_quote}{str_to_print}{end_quote})'
 
 # =
 def var_assign(variables, line, *args, **kwargs):
-    
     var, value = re.split('=', line)
 
+    # Just add it to the dict lol. I know now writing comments after finishing
+    # That i couldve just did it directly but too late
     if variables:
         results = var_sub(variables, value)
         value = results['line']
     value = remove_start_end_quotes(value)
 
     variables[var] = value
+
     return f'{var} = "{value}"'
 
 # #
@@ -128,16 +145,14 @@ def inline_comments(line):
     
 # SUBSET 1, where i realized variables and stuff can just be called without calling but it's too late
 # globbing
-def behold_the_glob(line):
-    # look for word containing *, ?, [, and ]
-    # return word: replacement
-    # go replace it and deal with it in the adult function
+def behold_the_glob(line):  
     result=  {}
     pattern = r'(?:^|\s)(\S*[\*\?\[\]]+\S*)(?:\s|$)'
 
+    # look for word containing *, ?, [, and ]
     # Look for matches in the line
-    no_single_quotes = re.sub(r"'[^']*'", "", line)  # remove all parts within single quotes
-    matches = re.findall(pattern, no_single_quotes)
+    no_quotes = re.sub(r'"[^"]*"|\'[^\']*\'', "", line) # remove all parts within single quotes
+    matches = re.findall(pattern, no_quotes) # search within areas not enclosed in single quotes
 
     if len(matches) > 0:
         imports.add("glob")
@@ -148,12 +163,14 @@ def behold_the_glob(line):
 
     return result
 
+# for-loops
 def for_loop(variables, start_line, depth, *args, **kwargs):
     loop_variables = variables.copy()
     start_line, comment = inline_comments(start_line)
     indent_level = '\t' * depth
     pattern = r'for\s+(\w+)\s+in\s+(.*)'
 
+    # Get what we are using to loop
     match = re.match(pattern, start_line)
     if match:
         variable_name = match.group(1)
@@ -164,12 +181,14 @@ def for_loop(variables, start_line, depth, *args, **kwargs):
 
     loop_values = behold_the_glob(values)
     if not loop_values:
+        # We know it's not a glob so we have to turn it into an array
         values = re.split(' ', values)
         loop_values = "["
         for value in values:
             loop_values += f'"{value}",'
         loop_values = loop_values[:-1] + "]"
     else:
+        # It's just a glob but we need to get format the glob return
         loop_values = list(loop_values.values())[0]
         loop_values = re.split('\(', loop_values, 1)
         loop_values = loop_values[1][:-1]
@@ -182,6 +201,7 @@ def for_loop(variables, start_line, depth, *args, **kwargs):
         if line == "done":
             return ""
 
+        # Calling the pattern handlers again, but we add in a recurisve indent thing
         for pattern, handler in command_handler.items():
             if re.match(pattern, line):
                 print_line = handler(loop_variables, line, depth + 1)
@@ -211,6 +231,7 @@ def exit_handle(variables, line, *args, **kwargs):
 def cd_handle(variables, line, *args, **kwargs):
     imports.add("os")
     line = re.split(' ', line, 1)
+
     return(f'os.chdir("{line[1]}")')
 
 def read_handle(variables, line, *args, **kwargs):
@@ -218,12 +239,13 @@ def read_handle(variables, line, *args, **kwargs):
     # Lowkey I am pogging rihgt now because loopvar wrokaround works here too LOL
     # Now im thinking if i could implement this to glob but honestly it's late and i have other projects
     variables[line[1]] = "loopvar:"+line[1]
-    return(f'input = ("{line[1]}")')
+    
+    return(f'{line[1]} = input()')
 
 def external_command(variables, line):
     words = re.split(' ', line)
     commands = []
-    
+
     for word in words:
         word = '"' + word + '"'
         word = var_sub(variables, word)['line']
@@ -248,12 +270,6 @@ def external_command(variables, line):
 # *COMMAND HANDLER
 filepath = sys.argv[1]
 command_handler = {
-    # Match enclosed quotes \'[^\']*\' | \"[^\"]*\"
-    # Match any string of allowed characters without quotes or variable subs \$\w+ | \w+
-    # Match zero or more whitespace to allow space (patterns)\s*
-    #r'^echo ((\'[^\']*\'|\"[^\"]*\"|\$\w+|\w+|#)\s*)+$': echo_line,
-    #r'^[\w]+=((\'[^\']*\'|\"[^\"]*\"|\$\w+|\w+|#)\s*)+$': var_assign
-
     r'^echo .+$': echo_line,
     r'^[\w]+=.+': var_assign,
     r'^for \w+ in .*': for_loop,
